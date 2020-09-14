@@ -1,8 +1,6 @@
 package com.weirm.myapplication
 
-import android.animation.Animator
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
+import android.animation.*
 import android.content.Context
 import android.graphics.*
 import android.graphics.PathMeasure.TANGENT_MATRIX_FLAG
@@ -11,6 +9,7 @@ import android.util.Log
 import android.util.SparseArray
 import android.view.View
 import android.view.animation.LinearInterpolator
+import androidx.core.animation.doOnEnd
 import androidx.core.animation.doOnRepeat
 import androidx.core.animation.doOnResume
 import androidx.core.graphics.drawable.toBitmap
@@ -42,12 +41,12 @@ class BezierView(context: Context, attrs: AttributeSet) : View(context, attrs) {
     var originY = 400
 
 
-
     @Volatile
     var heightList = object : LinkedList<Float>() {
         @Synchronized
         override fun addFirst(e: Float?) {
             super.addFirst(e)
+            postInvalidate()
         }
 
         @Synchronized
@@ -60,8 +59,6 @@ class BezierView(context: Context, attrs: AttributeSet) : View(context, attrs) {
     lateinit var boat: Bitmap
 
     var waveNum = 3
-
-
 
 
     //波浪幅度
@@ -97,11 +94,12 @@ class BezierView(context: Context, attrs: AttributeSet) : View(context, attrs) {
         mPath!!.moveTo(-mItemWaveLength + dx, originY.toFloat()) //波浪的开始位置
         //每一次for循环添加一个波浪的长度到path中，根据view的宽度来计算一共可以添加多少个波浪长度
         var i = -mItemWaveLength
-        var tempPosition = 0
 
-        while (i <= width + mItemWaveLength && dx != 0f) {
+
+        while (i <= width + mItemWaveLength) {
             mPath!!.rQuadTo(
                 halfWaveLen / 2.toFloat(),
+                //使用随机的波浪高度
                 -heightList.get(waveIndex),
                 halfWaveLen.toFloat(),
                 0f
@@ -114,13 +112,8 @@ class BezierView(context: Context, attrs: AttributeSet) : View(context, attrs) {
             )
             i += mItemWaveLength
             waveIndex++
-            tempPosition++
+
         }
-
-
-        var mPathMeasure = PathMeasure()
-        mPathMeasure.setPath(mPath, false)
-
 
         mPath!!.lineTo(width.toFloat(), height.toFloat())
         mPath!!.lineTo(0f, height.toFloat())
@@ -163,17 +156,17 @@ class BezierView(context: Context, attrs: AttributeSet) : View(context, attrs) {
     fun startAnim() {
         //根据一个动画不断得到0~mItemWaveLength的值dx，通过dx的增加不断去改变波浪开始的位置，dx的变化范围刚好是一个波浪的长度，
         //所以可以形成一个完整的波浪动画，假如dx最大小于mItemWaveLength的话， 就会不会画出一个完整的波浪形状
+
+
         var anim: ObjectAnimator =
             ObjectAnimator.ofFloat(BezierView@ this, "dx", 0f, mItemWaveLength.toFloat())
+
         anim.duration = 1000
         anim.repeatCount = ValueAnimator.INFINITE
 
-
         anim.doOnRepeat {
-            handler.postAtFrontOfQueue {
-                heightList.addFirst(Random.nextInt(500).toFloat())
-                heightList.removeAt(waveNum + 6)
-            }
+            heightList.addFirst(Random.nextInt(500).toFloat())
+            heightList.removeAt(10)
         }
 
         anim.interpolator = LinearInterpolator()
